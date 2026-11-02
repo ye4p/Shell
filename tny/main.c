@@ -111,7 +111,7 @@ int tny_launch(char **args) {
     pid = fork();
     if (pid == 0) {
         // Child process
-        if (execv(args[0], args) == -1) {
+        if (execvp(args[0], args) == -1) {
             perror("tny");
         }
         exit(EXIT_FAILURE);
@@ -189,7 +189,6 @@ int tny_execute(char **args) {
 
     for (size_t i = 0; i < tny_num_builtins(); ++i) {
         if (strcmp(args[0], builtin_str[i]) == 0) {
-            printf("Builin function found\n");
             return (*builtin_func[i])(args);
         }
     }
