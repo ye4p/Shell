@@ -1,3 +1,0 @@
-/home/dgolubkov/repos/shell/build/CMakeFiles/tny.dir
-/home/dgolubkov/repos/shell/build/CMakeFiles/edit_cache.dir
-/home/dgolubkov/repos/shell/build/CMakeFiles/rebuild_cache.dir
