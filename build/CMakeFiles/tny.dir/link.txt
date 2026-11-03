@@ -1,0 +1,1 @@
+/usr/bin/c++ CMakeFiles/tny.dir/src/main.cpp.o CMakeFiles/tny.dir/src/shell.cpp.o -o tny 

@@ -22,53 +22,80 @@ std::string Shell::read_line() const {
 void Shell::split_line(std::string& line) {
     args.clear();
     size_t beg = 0;
-    for (size_t i = 0; i < line.size(); ++i) {
-        if (line[i] != ' ') continue;
+    size_t i = 0;
 
+    int quotes_count = 0;
+    char quote_type = '';
+    bool quote_active = false;
+
+    while (i < line.size()) {
+        if (line[i] != ' ' && !quote) {
+            ++i;
+            continue;
+        }
+
+        if (line[i] == ''' || line[i] == '"') {
+            if (quotes_count % 2 == 0) {
+                quote_active = true;
+            }
+        }
         if (beg != i) {
             args.push_back(line.substr(beg, i - beg));
+            beg = i + 1;
         }
+        ++i;
     }
+    if (line.back() != ' ')
+        args.push_back(line.substr(beg));
 }
 
 int Shell::launch() {
-    pid_t pid, wpid;
+    pid_t pid; // Removed wpid cause its unnecessary at the moment
     int status;
     pid = fork();
 
     if (pid == 0) {
         // Child process:
-        if (execvp(args[0], args) == -1)
+        // Construct a vector of char*:
+        std::vector<char*> temp;
+        for (auto& arg : args) {
+            temp.push_back(arg.data());
+        }
+        if (execvp(temp[0], temp.data()) == -1)
             perror("tny");
-        exit(EXIT_FAILURE);
+        std::exit(EXIT_FAILURE);
     } else if (pid < 0) {
         // Error forking:
         perror("tny");
     } else {
         // Parent process:
         do {
-            wpid = waitpid(pid, &status, WUNTRACED);
+            waitpid(pid, &status, WUNTRACED);
         } while (!WIFEXITED(status) && !WIFSIGNALED(status));
     }
 
     return 1;
 }
 
-int execute() {
+int Shell::execute() {
     if (args.empty())
         return 1; // Since no command was entered.
 
-    for (size_t i = 0; i < num_builtins; ++i) {
+    for (size_t i = 0; i < num_builtins(); ++i) {
         if (args[0] == builtin_str[i]) {
-            return (*builtin_func[i])(args);
+            return call_builtin(i);
         }
     }
 
     return launch();
 }
 
-int Shell::num_builtins() {
-    return builtin_str.size();
+size_t Shell::num_builtins() {
+    return builtin_func.size();
+}
+
+int Shell::call_builtin(size_t i) {
+    return (this->*builtin_func[i])();
 }
 
 //
@@ -79,7 +106,7 @@ int Shell::cd() {
     if (args.size() <= 1) {
         std::cerr << "tny: expected argument to \"cd\"\n";
     } else {
-        if (chdir(args.at(1)) != 0) {
+        if (chdir(args.at(1).c_str()) != 0) {
             perror("tny");
         }
     }
@@ -87,18 +114,33 @@ int Shell::cd() {
     return 1;
 }
 
-int Shell:help() {
+int Shell::help() {
     std::cout << "DG's tny shell\n";
-    std::cout << "Type command with its arguments and click enter\n");
-    std::cout << "Built in programs:\n");
+    std::cout << "Type command with its arguments and click enter\n";
+    std::cout << "Built in programs:\n";
     for (std::string& s : builtin_str) {
         std::cout << "  " << s << "\n";
     }
 
-    // Add message about man command
+    std::cout << "use man page to find more information about commands\n";
     return 1;
 }
 
-int Shell:exit() {
+int Shell::exit() {
     return 0;
+}
+
+int Shell::pwd() {
+    std::cout << std::filesystem::current_path() << "\n";
+    return 1;
+}
+
+int Shell::type() {
+    if (args.size() <= 1)
+        std::cerr << "tny: expected argument to \"type\"\n";
+    if (std::find(builtin_str.begin(), builtin_str.end(), args[1]) != builtin_str.end()) 
+        std::cout << "Shell builtin\n";
+    else
+        std::cout << "Not a shell builtin\n";
+    return 1;
 }
