@@ -1,4 +1,5 @@
 #include "../include/shell.h"
+#include "../include/parser.h"
 
 void Shell::loop() {
     int status;
@@ -8,6 +9,9 @@ void Shell::loop() {
         std::cout << "> ";
         line = read_line();
         split_line(line);
+        for (const std::string& s : args_) {
+            std::cout << ">>" << s << "<<\n";
+        }
         status = execute();
     } while (status);
 }
@@ -20,33 +24,9 @@ std::string Shell::read_line() const {
 }
 
 void Shell::split_line(std::string& line) {
-    args.clear();
-    size_t beg = 0;
-    size_t i = 0;
-
-    int quotes_count = 0;
-    char quote_type = '';
-    bool quote_active = false;
-
-    while (i < line.size()) {
-        if (line[i] != ' ' && !quote) {
-            ++i;
-            continue;
-        }
-
-        if (line[i] == ''' || line[i] == '"') {
-            if (quotes_count % 2 == 0) {
-                quote_active = true;
-            }
-        }
-        if (beg != i) {
-            args.push_back(line.substr(beg, i - beg));
-            beg = i + 1;
-        }
-        ++i;
-    }
-    if (line.back() != ' ')
-        args.push_back(line.substr(beg));
+    args_.clear();
+    Parser p(line, args_);
+    p.parse();
 }
 
 int Shell::launch() {
@@ -58,7 +38,7 @@ int Shell::launch() {
         // Child process:
         // Construct a vector of char*:
         std::vector<char*> temp;
-        for (auto& arg : args) {
+        for (auto& arg : args_) {
             temp.push_back(arg.data());
         }
         if (execvp(temp[0], temp.data()) == -1)
@@ -78,11 +58,11 @@ int Shell::launch() {
 }
 
 int Shell::execute() {
-    if (args.empty())
+    if (args_.empty())
         return 1; // Since no command was entered.
 
     for (size_t i = 0; i < num_builtins(); ++i) {
-        if (args[0] == builtin_str[i]) {
+        if (args_[0] == builtin_str_[i]) {
             return call_builtin(i);
         }
     }
@@ -91,11 +71,11 @@ int Shell::execute() {
 }
 
 size_t Shell::num_builtins() {
-    return builtin_func.size();
+    return builtin_func_.size();
 }
 
 int Shell::call_builtin(size_t i) {
-    return (this->*builtin_func[i])();
+    return (this->*builtin_func_[i])();
 }
 
 //
@@ -103,10 +83,10 @@ int Shell::call_builtin(size_t i) {
 //
 
 int Shell::cd() {
-    if (args.size() <= 1) {
+    if (args_.size() <= 1) {
         std::cerr << "tny: expected argument to \"cd\"\n";
     } else {
-        if (chdir(args.at(1).c_str()) != 0) {
+        if (chdir(args_.at(1).c_str()) != 0) {
             perror("tny");
         }
     }
@@ -118,7 +98,7 @@ int Shell::help() {
     std::cout << "DG's tny shell\n";
     std::cout << "Type command with its arguments and click enter\n";
     std::cout << "Built in programs:\n";
-    for (std::string& s : builtin_str) {
+    for (std::string& s : builtin_str_) {
         std::cout << "  " << s << "\n";
     }
 
@@ -136,9 +116,9 @@ int Shell::pwd() {
 }
 
 int Shell::type() {
-    if (args.size() <= 1)
+    if (args_.size() <= 1)
         std::cerr << "tny: expected argument to \"type\"\n";
-    if (std::find(builtin_str.begin(), builtin_str.end(), args[1]) != builtin_str.end()) 
+    if (std::find(builtin_str_.begin(), builtin_str_.end(), args_[1]) != builtin_str_.end()) 
         std::cout << "Shell builtin\n";
     else
         std::cout << "Not a shell builtin\n";

@@ -1,3 +1,5 @@
+#pragma once
+
 #include <sys/wait.h>
 #include <unistd.h>
 #include <cstdlib>
@@ -11,9 +13,9 @@
 
 class Shell {
 private:
-    std::vector<std::string> args;
+    std::vector<std::string> args_;
 
-    std::vector<std::string> builtin_str = {
+    std::vector<std::string> builtin_str_ = {
         "cd",
         "help",
         "exit",
@@ -24,7 +26,7 @@ private:
     using func = int (Shell::*)();
 
     // int (*builtin_func[])() = {
-    std::array<func, 5> builtin_func{
+    std::array<func, 5> builtin_func_ {
         &Shell::cd,
         &Shell::help,
         &Shell::exit,
