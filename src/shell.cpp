@@ -1,14 +1,15 @@
 #include "../include/shell.h"
 #include "../include/parser.h"
+#include "../include/line.h"
 
 void Shell::loop() {
     int status;
-    std::string line;
+    Line line;
 
     do {
         std::cout << "> ";
-        line = read_line();
-        split_line(line);
+        line.read_line();
+        split_line(&line);
         for (const std::string& s : args_) {
             std::cout << ">>" << s << "<<\n";
         }
@@ -16,14 +17,7 @@ void Shell::loop() {
     } while (status);
 }
 
-std::string Shell::read_line() const {
-    std::string line;
-    std::getline(std::cin, line);
-
-    return line;
-}
-
-void Shell::split_line(std::string& line) {
+void Shell::split_line(Line* line) {
     args_.clear();
     Parser p(line, args_);
     p.parse();
