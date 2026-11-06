@@ -14,11 +14,16 @@ class Parser { // The tokens for this parser are just strings.
     std::string& line_;
     std::vector<std::string>& args_;
 
-    int quotes_count;
-    char quote_type;
-    bool quote_active;
-    std::string carry; // From previous line if multiple
+    int quotes_count_;
+    char quote_type_;
+    bool quote_active_;
+
+    bool has_char_;
+    std::string token_; // Now using token system to overstep quotes edge cases
+
+    std::string carry_; // From previous line if multiple
 public:
     Parser(std::string& line, std::vector<std::string>& args);
-    ParseStatus parse();
+    ParseStatus parse_line();
+    void parse();
 };

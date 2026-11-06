@@ -1,54 +1,67 @@
 #include "../include/parser.h"
 
 Parser::Parser(std::string& line, std::vector<std::string>& args) : line_(line), args_(args) {
-    quotes_count = 0;
-    quote_type = ' ';
-    quote_active = false;
+    quotes_count_ = 0;
+    quote_type_ = ' ';
+    quote_active_ = false;
+
+    has_char_ = false;
 }
 
-ParseStatus Parser::parse() {
+ParseStatus Parser::parse_line() {
     size_t beg = 0;
     size_t i = 0;
 
     while (i < line_.size()) {
         if (line_[i] == '\'' || line_[i] == '\"') {
-            if (quotes_count % 2 == 0) { // Quotes beginning
-                quote_active = true;
-                quote_type = line_[i];
-                ++quotes_count;
+            if (quotes_count_ % 2 == 0) { // Quotes beginning
+                bool need_new_beginning = i < 1 || line_[i - 1] == ' '; // If the char before before isn't OOB and isn't space, then -> still part of the same token
+                if (i != beg && need_new_beginning) { // Push whatever there was before if non zero length
+                    args_.push_back(line_.substr(beg, i - beg));
+                }
+                quote_active_ = true;
+                quote_type_ = line_[i];
+                ++quotes_count_;
                 ++i;
-                beg = i;
+                if (need_new_beginning) // NEW ISSUE: now it puts the whole string in including quotes which isn't what we want
+                    beg = i;
                 continue;
             }
-            if (line_[i] == quote_type) { // Quotes end
-                ++quotes_count;
-                quote_active = false;
-                quote_type = ' ';
+            if (line_[i] == quote_type_) { // Quotes end
+                ++quotes_count_;
+                quote_active_ = false;
+                quote_type_ = ' ';
                 args_.push_back(line_.substr(beg, i - beg));
+                has_char_ = false;
                 beg = i + 1;
                 ++i;
                 continue;
             }
         }
 
-        if (line_[i] != ' ' || quote_active) {
-            if (i >= 1 && line_[i - 1] == ' ') { // Now it sets the beginning when previos char was space and current one isn't
+        if (!quote_active_ && line_[i] != ' ') {
+            has_char_ = true;
+            if (i >= 1 && line_[i - 1] == ' ') { // Now it sets the beginning when previous char was space and current one isn't
                 beg = i;
             }
-            ++i; // Next thing need to add is when there are big gaps between tokens, parser shouldn't treat them as tokens
+            ++i;
             continue;
         }
 
-        if (beg != i) { // Right now it assumes that right after token ended, new one begins,
-                        // But this isn't always true since there can be multiple spaces between them.
+        if (!quote_active_ && has_char_ && beg != i) {
             args_.push_back(line_.substr(beg, i - beg));
+            has_char_ = false;
             beg = i + 1;
         }
 
         ++i;
     }
-    if (line_.back() != ' ' || (line_.back() != ' ' && line_.back() == quote_type))
+    if (line_.back() != ' ' && line_.back() != '\'' && line_.back() != '\"' )
         args_.push_back(line_.substr(beg));
 
-    return ParseStatus::Success;
+    return quote_active_ ? ParseStatus::KeepParsing : ParseStatus::Success;
+}
+
+void Parser::parse() {
+    parse_line();
 }
