@@ -12,24 +12,38 @@ enum class ParseStatus {
     KeepParsing,
 };
 
-class Parser { // The tokens for this parser are just strings.
-    Line* line_;
-    std::vector<std::string>& args_;
+enum class TokenType {
+    Pipeline,       // |
+    Redirection,    // > and other kinds
 
-    int quotes_count_;
-    char quote_type_;
+    Arg,
+    Quote,
+    Command,
+    LogicalOperator,
+};
+
+// Contains basic information about token.
+class Token {
+    TokenType tt_;
+    std::string content_;
+};
+
+// Converts plain string into the list of tokens.
+class Lexer {
+    const std::string& line_;
     bool quote_active_;
 
-    ParseStatus ps;
-    bool has_char_;
-    bool is_comment_;
-    std::string token_; // Now using token system to overstep quotes edge cases
-
-    std::string carry_; // From previous line if multiple
 public:
-    Parser(Line* line, std::vector<std::string>& args);
-    void parse_line();
+    Lexer(const std::string& line);
+    std::vector<Token> tokenize();
+};
+
+// Builds the AST tree and parses the tokens.
+class Parser {
+    const std::vector<Token>& tokens_;
+    std::vector<std::string>& args_;
+
+public:
+    Parser(std::vector<Token>& tokens, std::vector<std::string>& args);
     void parse();
-    void push_token();
-    bool is_quote(size_t index);
 };

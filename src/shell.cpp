@@ -1,15 +1,14 @@
 #include "../include/shell.h"
-#include "../include/parser.h"
-#include "../include/line.h"
+#include "../include/reader.h"
 
 void Shell::loop() {
     int status;
     Line line;
 
     do {
-        std::cout << "> ";
-        line.read_line();
-        split_line(&line);
+        Reader r(args_);
+        r.read();
+
         for (const std::string& s : args_) {
             std::cout << ">>" << s << "<<\n";
         }
