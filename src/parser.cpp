@@ -4,7 +4,7 @@
 //  Lexer function definitions
 //
 
-Lexer::Lexer() : line_(nullptr), quote_active_(false), quote_type_(' '), tt_(TokenType::Uninitialized), i(0) {
+Lexer::Lexer() : line_(nullptr), tt_(TokenType::Uninitialized), i(0) {
     
 }
 
@@ -12,13 +12,8 @@ void Lexer::point_to(const std::string* line) {
     line_ = line;
 }
 
-std::tuple<std::vector<Token>, ParseStatus> Lexer::tokenize() {
+std::vector<Token> Lexer::tokenize() {
     while (i < size()) {
-        if (quote_active_ && curr() != quote_type_) {
-            tok_str_ += curr();
-            advance();
-            continue;
-        }
         switch (curr()) {
             case '|':
                 if (!is_oob(i + 1) && next() != '|') {
@@ -39,20 +34,14 @@ std::tuple<std::vector<Token>, ParseStatus> Lexer::tokenize() {
                 break;
             case '\'':
             case '\"':
-                if (quote_active_ && quote_type_ == curr()) {
-                    push_token();
-                    quote_type_ = ' ';
-                    quote_active_ = false;
-                } else {
-                    push_token_if_nonempty();
-                    quote_active_ = true;
-                    quote_type_ = curr();
-                    if (curr() == '\'')
-                        tt_ = TokenType::SingleQuotedString;
-                    else 
-                        tt_ = TokenType::DoublyQuotedString;
-                }
-                break;
+                push_token_if_nonempty();
+                tok_str_ += curr();
+                if (curr() == '\'')
+                    tt_ = TokenType::SingleQuote;
+                else 
+                    tt_ = TokenType::DoubleQuote;
+                push_token();
+
             case '<': // Can be either input redirection < or process substitution <()
                 push_token_if_nonempty();
                 if (!is_oob(i + 1) && next() == '(') {
@@ -69,7 +58,36 @@ std::tuple<std::vector<Token>, ParseStatus> Lexer::tokenize() {
                 }
                 break;
             case '>':
+                push_token_if_nonempty();
+                tt_ = TokenType::OutputRedirection;
 
+                if (!is_oob(i - 1) && std::isdigit(prev()) && prev() == tokens_.back().content.front()) {
+                    tok_str_ += prev();
+                    tokens_.pop_back();
+                }
+
+                tok_str_ += curr();
+
+                if (!is_oob(i + 1) && next() == '>') {  // LEGAL: smth > smth, smth >> smth, 
+                                                        // smth >& smth, smth >>& smth
+                                                        // and any combinations with numbers on both sides.
+                    tok_str_ += next();
+                    advance();
+                }
+
+                if (!is_oob(i + 1) && next() == '&') {
+                    tok_str_ += next();
+                    advance();
+                }
+
+                if (!is_oob(i + 1) && std::isdigit(next())) {
+                    tok_str_ += next();
+                    advance();
+                }
+
+                push_token();
+
+                break;
             case ')':
                 push_token_if_nonempty();
                 tok_str_ = curr();
@@ -77,7 +95,9 @@ std::tuple<std::vector<Token>, ParseStatus> Lexer::tokenize() {
                 push_token();
                 break;
             case ' ':
-                push_token_if_nonempty();
+                if (tt_ != TokenType::Whitespace)
+                    push_token_if_nonempty();
+                tok_str_ += curr();
                 break;
             default:
                 tok_str_ += curr();
@@ -89,7 +109,7 @@ std::tuple<std::vector<Token>, ParseStatus> Lexer::tokenize() {
     if (!tok_str_.empty()) {
         push_token();
     }
-    return {tokens_, quote_active_ ? ParseStatus::KeepParsing : ParseStatus::Success};
+    return tokens_;
 }
 
 char Lexer::prev() {

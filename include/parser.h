@@ -15,18 +15,16 @@ enum class ParseStatus {
 enum class TokenType {
     Uninitialized = -1, // Just for debugging purposes
 
-    Pipeline = 0,       // |
-    OutputRedirection = 1,    // > and other kinds
-
-    String = 2,
-    SingleQuotedString = 3,
-    DoublyQuotedString = 4,
-    ProcessSubstitutionBegin = 5, // Several things will have beginning like this, but the end will be just generic parenthese
-
-    BackParentheses = 6,
-    InputRedirection = 7,
-    Command = 8,
-    LogicalOperator = 9,
+    String = 0,
+    SingleQuote = 1,
+    DoublyQuote = 2,
+    Pipeline = 3,       // |
+    InputRedirection = 4,
+    OutputRedirection = 5,    // > and other kinds
+    ProcessSubstitutionBegin = 6, // Several things will have beginning like this, but the end will be just generic parenthese
+    BackParentheses = 7,
+    LogicalOperator = 8,
+    Whitespace = 9,
 };
 
 // Contains basic information about token.
