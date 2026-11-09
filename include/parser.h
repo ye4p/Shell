@@ -4,7 +4,6 @@
 #include <string>
 #include <vector>
 #include <tuple>
-#include "line.h"
 
 enum class ParseStatus {
     Inactive,
@@ -14,26 +13,27 @@ enum class ParseStatus {
 };
 
 enum class TokenType {
-    Uninitialized, // Just for debugging purposes
+    Uninitialized = -1, // Just for debugging purposes
 
-    Pipeline,       // |
-    Redirection,    // > and other kinds
+    Pipeline = 0,       // |
+    OutputRedirection = 1,    // > and other kinds
 
-    Arg,
-    SingleQuotedString,
-    DoublyQuotedString,
-    ProcessSubstitutionBegin,
-    ProcessSubstitutionEnd,
-    InputRedirection,
-    Command,
-    LogicalOperator,
+    String = 2,
+    SingleQuotedString = 3,
+    DoublyQuotedString = 4,
+    ProcessSubstitutionBegin = 5, // Several things will have beginning like this, but the end will be just generic parenthese
+
+    BackParentheses = 6,
+    InputRedirection = 7,
+    Command = 8,
+    LogicalOperator = 9,
 };
 
 // Contains basic information about token.
 struct Token {
-    std::string content_;
-    TokenType tt_;
-    Token(std::string content, TokenType tt) : content_(content), tt_(tt) {}
+    std::string content;
+    TokenType tt;
+    Token(std::string content, TokenType tt) : content(content), tt(tt) {}
 };
 
 // Converts plain string into the list of tokens.
@@ -49,9 +49,10 @@ class Lexer {
     size_t i;
 
 public:
-    Lexer(const std::string* line, int num);
+    Lexer();
     void point_to(const std::string* line);
     std::tuple<std::vector<Token>, ParseStatus> tokenize();
+    char prev();
     char curr();
     char next();
     char at(size_t index);
@@ -59,6 +60,7 @@ public:
     bool is_oob(size_t index);
     void advance();
     void push_token();
+    bool push_token_if_nonempty();
 };
 
 // Builds the AST tree and parses the tokens.
@@ -67,6 +69,6 @@ class Parser {
     std::vector<std::string>& args_;
 
 public:
-    Parser(std::vector<Token>& tokens, std::vector<std::string>& args);
+    Parser(const std::vector<Token>& tokens, std::vector<std::string>& args);
     void parse();
 };

@@ -4,7 +4,7 @@
 //  Lexer function definitions
 //
 
-Lexer::Lexer() : line_(nullptr), quote_active_(false), toke_str_(false), tt_(TokenType::Uninitialized) {
+Lexer::Lexer() : line_(nullptr), quote_active_(false), quote_type_(' '), tt_(TokenType::Uninitialized), i(0) {
     
 }
 
@@ -12,40 +12,30 @@ void Lexer::point_to(const std::string* line) {
     line_ = line;
 }
 
-std::vector<Token> Lexer::tokenize() {
+std::tuple<std::vector<Token>, ParseStatus> Lexer::tokenize() {
     while (i < size()) {
         if (quote_active_ && curr() != quote_type_) {
             tok_str_ += curr();
-            ++i;
+            advance();
             continue;
         }
         switch (curr()) {
-            case '0': 
-                if (quote_active_) {
-                    tok_str_ += curr();
-                } else {
-                    continue;
-                }
-                break;
             case '|':
                 if (!is_oob(i + 1) && next() != '|') {
-                    // Push the existing token if not empty.
-                    push_token();
+                    push_token_if_nonempty();
                     tt_ = TokenType::Pipeline;
                     tok_str_ += curr();
                     if (next() == '&') {
-                        tos_str_ += next();
-                        ++i;
+                        tok_str_ += next();
+                        advance();
                     }
                     push_token();
                 } else if (!is_oob(i + 1)) {
                     tt_ = TokenType::LogicalOperator;
                     tok_str_ += curr() + next();
-                    ++i;
+                    advance();
                     push_token();
-                } {
-                    // Handle oob
-                }
+                } 
                 break;
             case '\'':
             case '\"':
@@ -54,6 +44,7 @@ std::vector<Token> Lexer::tokenize() {
                     quote_type_ = ' ';
                     quote_active_ = false;
                 } else {
+                    push_token_if_nonempty();
                     quote_active_ = true;
                     quote_type_ = curr();
                     if (curr() == '\'')
@@ -63,10 +54,11 @@ std::vector<Token> Lexer::tokenize() {
                 }
                 break;
             case '<': // Can be either input redirection < or process substitution <()
-                push_token();
-                if (next() == '(') {
+                push_token_if_nonempty();
+                if (!is_oob(i + 1) && next() == '(') {
                     tt_ = TokenType::ProcessSubstitutionBegin;
-                    tok_str_ += curr() + next();
+                    tok_str_ += curr();
+                    tok_str_ += next();
 
                     advance();
                     push_token();
@@ -75,6 +67,21 @@ std::vector<Token> Lexer::tokenize() {
                     tt_ = TokenType::InputRedirection;
                     push_token();
                 }
+                break;
+            case '>':
+
+            case ')':
+                push_token_if_nonempty();
+                tok_str_ = curr();
+                tt_ = TokenType::BackParentheses;
+                push_token();
+                break;
+            case ' ':
+                push_token_if_nonempty();
+                break;
+            default:
+                tok_str_ += curr();
+                tt_ = TokenType::String;
         }
 
         advance();
@@ -82,10 +89,11 @@ std::vector<Token> Lexer::tokenize() {
     if (!tok_str_.empty()) {
         push_token();
     }
+    return {tokens_, quote_active_ ? ParseStatus::KeepParsing : ParseStatus::Success};
 }
 
 char Lexer::prev() {
-    return (*line_)[i - 1]
+    return (*line_)[i - 1];
 }
 
 char Lexer::curr() {
@@ -97,7 +105,7 @@ char Lexer::next() {
 }
 
 char Lexer::at(size_t index) {
-    return (*line_([index]);
+    return (*line_)[index];
 }
 
 size_t Lexer::size() {
@@ -105,7 +113,7 @@ size_t Lexer::size() {
 }
 
 bool Lexer::is_oob(size_t index) {
-    return index < 0 || index >= line_->size();
+    return index >= line_->size();
 }
 
 void Lexer::advance() {
@@ -113,9 +121,18 @@ void Lexer::advance() {
 }
 
 void Lexer::push_token() {
-    tokens_.push_back(Token(content_, tt_));
+    tokens_.push_back(Token(tok_str_, tt_));
     tt_ = TokenType::Uninitialized;
-    content_.clear();
+    tok_str_.clear();
+}
+
+bool Lexer::push_token_if_nonempty() { // Returns true/false if non empty token was added
+    if (tok_str_.empty()) return false;
+
+    tokens_.push_back(Token(tok_str_, tt_));
+    tt_ = TokenType::Uninitialized;
+    tok_str_.clear();
+    return true;
 }
 
 //

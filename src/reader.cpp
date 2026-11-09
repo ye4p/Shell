@@ -2,7 +2,7 @@
 
 Reader::Reader(std::vector<std::string>& args) : args_(args) {}
 
-void Reader.read() {
+void Reader::read() {
     std::cout << '>';
 
     std::string line;
@@ -12,12 +12,15 @@ void Reader.read() {
 
         lexer.point_to(&line);
         auto [tokens, parse_status] = lexer.tokenize();
-        if (ps == ParseStatus::KeepParsing) continue;
 
-        Parser parser(tokens, args_);
-        ParseStatus ps = parser.parse(tokens);
+        for (const Token& t : tokens) {
+            std::cout<< "Token: <" << t.content << "> of type " << static_cast<int>(t.tt) << '\n';
+        }
 
-        ++count;
+        if (parse_status != ParseStatus::KeepParsing) break;
 
-    } while (ps == ParseStatus::KeepParsing);
+        // Parser parser(tokens, args_);
+        // ParseStatus ps = parser.parse(tokens);
+
+    } while (true);
 }

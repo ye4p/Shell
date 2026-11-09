@@ -3,7 +3,6 @@
 
 void Shell::loop() {
     int status;
-    Line line;
 
     do {
         Reader r(args_);
@@ -14,12 +13,6 @@ void Shell::loop() {
         }
         status = execute();
     } while (status);
-}
-
-void Shell::split_line(Line* line) {
-    args_.clear();
-    Parser p(line, args_);
-    p.parse();
 }
 
 int Shell::launch() {
