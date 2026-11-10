@@ -42,6 +42,7 @@ std::vector<Token> Lexer::tokenize() {
                     tt_ = TokenType::DoubleQuote;
                 push_token();
 
+                break;
             case '<': // Can be either input redirection < or process substitution <()
                 push_token_if_nonempty();
                 if (!is_oob(i + 1) && next() == '(') {
@@ -95,9 +96,10 @@ std::vector<Token> Lexer::tokenize() {
                 push_token();
                 break;
             case ' ':
-                if (tt_ != TokenType::Whitespace)
-                    push_token_if_nonempty();
+                push_token_if_nonempty();
+                tt_ = TokenType::Whitespace;
                 tok_str_ += curr();
+                push_token();
                 break;
             default:
                 tok_str_ += curr();
@@ -159,9 +161,42 @@ bool Lexer::push_token_if_nonempty() { // Returns true/false if non empty token 
 //  Parser function definitions
 //
 
-Parser::Parser(const std::vector<Token>& tokens, std::vector<std::string>& args) : tokens_(tokens), args_(args) {}
+Parser::Parser(std::vector<std::string>& args) : tokens_ptr_(nullptr), args_(args) {}
 
-void Parser::parse() {
+void Parser::point_to(const std::vector<Token>* tokens_ptr) {
+    tokens_ptr = tokens_ptr;
+}
 
+ParseStatus Parser::parse() {
+    return ParseStatus::Fail;
+}
+
+void Parser::cleanup() {
+    bool quote_active = false;
+    TokenType quote_type = TokenType::Uninitialized;
+    for (size_t i = 0; i < tokens_ptr_->size(); ++i) {
+        Token& t = (*tokens_ptr_)[i];
+
+        if (t.tt != TokenType::Whitespace || quote_active) {
+            tokens_.push_back(t);
+        }
+
+        // Needed to understand if space is needed.
+        if (t.tt == TokenType::SingleQuote || t.tt == TokenType::DoubleQuote) {
+            if (quote_active) {
+                if (t.tt == quote_type) {
+                    quote_active = false;
+                    quote_type = TokenType::Uninitialized;
+                }
+            } else {
+                quote_active = true;
+                quote_type = t.tt;
+            }
+        }
+    }
+    std::cout << "Filtered:\n";
+    for (const Token& t : tokens_) {
+        std::cout << t << '\n';
+    }
 }
 

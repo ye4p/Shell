@@ -1,16 +1,37 @@
 #include "../include/shell.h"
-#include "../include/reader.h"
+#include "../include/parser.h"
 
 void Shell::loop() {
     int status;
 
     do {
-        Reader r(args_);
-        r.read();
+        std::cout << '>';
 
-        for (const std::string& s : args_) {
+        std::string line;
+        Lexer lexer;
+        Parser parser(args_);
+        do {
+            std::getline(std::cin, line);
+
+            lexer.point_to(&line);
+            std::vector<Token> tokens = lexer.tokenize();
+
+            for (const Token& t : tokens) {
+                std::cout<< "Token: <" << t.content << "> of type " << static_cast<int>(t.tt) << '\n';
+            }
+
+            parser.point_to(&tokens);
+            parser.cleanup();
+            ParseStatus ps = parser.parse();
+
+
+            if (ps != ParseStatus::KeepParsing) break;
+
+        } while (true);
+
+        for (const std::string& s : args_)
             std::cout << ">>" << s << "<<\n";
-        }
+
         status = execute();
     } while (status);
 }

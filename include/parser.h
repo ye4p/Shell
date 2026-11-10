@@ -15,16 +15,16 @@ enum class ParseStatus {
 enum class TokenType {
     Uninitialized = -1, // Just for debugging purposes
 
-    String = 0,
-    SingleQuote = 1,
-    DoublyQuote = 2,
-    Pipeline = 3,       // |
-    InputRedirection = 4,
-    OutputRedirection = 5,    // > and other kinds
-    ProcessSubstitutionBegin = 6, // Several things will have beginning like this, but the end will be just generic parenthese
-    BackParentheses = 7,
-    LogicalOperator = 8,
-    Whitespace = 9,
+    Whitespace = 0,
+    String = 1,
+    SingleQuote = 2,
+    DoubleQuote = 3,
+    Pipeline = 4,       // |
+    InputRedirection = 5,
+    OutputRedirection = 6,    // > and other kinds
+    ProcessSubstitutionBegin = 7, // Several things will have beginning like this, but the end will be just generic parenthese
+    BackParentheses = 8,
+    LogicalOperator = 9,
 };
 
 // Contains basic information about token.
@@ -33,6 +33,11 @@ struct Token {
     TokenType tt;
     Token(std::string content, TokenType tt) : content(content), tt(tt) {}
 };
+
+std::ostream& operator<<(std::ostream& out, const Token& t) {
+        out << "Token: <" << t.content << "> of type: " << static_cast<int>(t.tt) << '\n';
+        return out;
+}
 
 // Converts plain string into the list of tokens.
 class Lexer {
@@ -49,7 +54,7 @@ class Lexer {
 public:
     Lexer();
     void point_to(const std::string* line);
-    std::tuple<std::vector<Token>, ParseStatus> tokenize();
+    std::vector<Token> tokenize();
     char prev();
     char curr();
     char next();
@@ -63,10 +68,14 @@ public:
 
 // Builds the AST tree and parses the tokens.
 class Parser {
-    const std::vector<Token>& tokens_;
+    const std::vector<Token>* tokens_ptr_;
+    std::vector<Token> tokens_;
     std::vector<std::string>& args_;
 
 public:
-    Parser(const std::vector<Token>& tokens, std::vector<std::string>& args);
-    void parse();
+    Parser(std::vector<std::string>& args);
+    void point_to(const std::vector<Token>* tokens);
+    ParseStatus parse();
+    void cleanup(); // Gets rid of extra stuff in the tokens vector
+
 };
