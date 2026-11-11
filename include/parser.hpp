@@ -72,10 +72,26 @@ class Parser {
     std::vector<Token> tokens_;
     std::vector<std::string>& args_;
 
+    // Variables used in parsing:
+    size_t position;
+
+
 public:
     Parser(std::vector<std::string>& args);
     void point_to(const std::vector<Token>* tokens);
     // Ex: cat < input.txt | grep "hello world" > output.txt && echo success
     ParseStatus parse();
     void cleanup(); // Gets rid of extra stuff in the tokens vector
+    
+    std::vector<CommandSeparator> parse_command_separators();
+    std::vector<LogicalExpressions> parse_logical_expressions();
+    std::vector<Pipeline> parse_pipelines();
+    std::vector<Command> parse_commands();
+    std::vector<Redirection> parse_redirections();
+    std::vector<Word> parse_words();
+
+
+    // Helper methods:
+    void advance();
+    const Token& curr();
 };

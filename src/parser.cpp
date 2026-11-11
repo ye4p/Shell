@@ -1,4 +1,4 @@
-#include "../include/parser.h"
+#include "../include/parser.hpp"
 
 std::ostream& operator<<(std::ostream& out, const Token& t) {
         out << "Token: <" << t.content << "> of type: " << static_cast<int>(t.tt);
@@ -222,3 +222,50 @@ void Parser::cleanup() {
     }
 }
 
+CommandSeparator Parser::parse_command_separator() {
+    std::vector<LogicalExpression> vec = {
+        parse_logical_expression()
+    };
+
+    while (!is_oob() && curr().type != TokenType::CommandSeparator) {
+        vec.emplace_back(
+            parse_logical_expression()
+        );
+    }
+
+    return CommandSeparator{vec};
+}
+
+LogicalExpression Parser::parse_logical_expression() {
+    LogicalExpression left = LogicalExpression{
+        parse_pipelines(),
+        parse_logical_operator();
+}
+
+LogicalOperator Parser::parse_logical_operator() {
+    if (curr().type == TokenType::LogicalOperator) {
+        if (curr().content == "&&") {
+            return LogicalOperator::And;
+        } else {
+            return LogicalOperator::Or;
+        }
+    } else {
+        return LogicalOperator::Error;
+    }
+}
+
+std::vector<Pipeline> Parser::parse_pipelines() {
+
+}
+
+std::vector<Command> Parser::parse_commands() {
+    
+}
+
+std::vector<Redirection> Parser::parse_redirections() {
+
+}
+
+std::vector<Word> Parser::parse_words() {
+    std::vector<Word> words;
+}

@@ -1,5 +1,5 @@
-#include "../include/shell.h"
-#include "../include/parser.h"
+#include "../include/shell.hpp"
+#include "../include/parser.hpp"
 
 void Shell::loop() {
     int status;
