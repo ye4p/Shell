@@ -1,5 +1,10 @@
 #include "../include/parser.h"
 
+std::ostream& operator<<(std::ostream& out, const Token& t) {
+        out << "Token: <" << t.content << "> of type: " << static_cast<int>(t.tt);
+        return out;
+}
+
 //
 //  Lexer function definitions
 //
@@ -96,12 +101,27 @@ std::vector<Token> Lexer::tokenize() {
                 push_token();
                 break;
             case ' ':
+                if (tt_ != TokenType::Whitespace) {
+                    push_token_if_nonempty();
+                    tt_ = TokenType::Whitespace;
+                }
+                tok_str_ += curr();
+                break;
+            case ';':
                 push_token_if_nonempty();
-                tt_ = TokenType::Whitespace;
+                tt_ = TokenType::CommandSeparator;
+                tok_str_ += curr();
+                push_token();
+                break;
+            case '&':
+                push_toke_if_nonempt();
+                tt_ = TokenType::BackgroundOperator;
                 tok_str_ += curr();
                 push_token();
                 break;
             default:
+                if (tt_ == TokenType::Whitespace) 
+                    push_token_if_nonempty();
                 tok_str_ += curr();
                 tt_ = TokenType::String;
         }
@@ -164,7 +184,7 @@ bool Lexer::push_token_if_nonempty() { // Returns true/false if non empty token 
 Parser::Parser(std::vector<std::string>& args) : tokens_ptr_(nullptr), args_(args) {}
 
 void Parser::point_to(const std::vector<Token>* tokens_ptr) {
-    tokens_ptr = tokens_ptr;
+    tokens_ptr_ = tokens_ptr;
 }
 
 ParseStatus Parser::parse() {
@@ -174,8 +194,9 @@ ParseStatus Parser::parse() {
 void Parser::cleanup() {
     bool quote_active = false;
     TokenType quote_type = TokenType::Uninitialized;
+
     for (size_t i = 0; i < tokens_ptr_->size(); ++i) {
-        Token& t = (*tokens_ptr_)[i];
+        const Token& t = (*tokens_ptr_)[i];
 
         if (t.tt != TokenType::Whitespace || quote_active) {
             tokens_.push_back(t);
@@ -194,6 +215,7 @@ void Parser::cleanup() {
             }
         }
     }
+
     std::cout << "Filtered:\n";
     for (const Token& t : tokens_) {
         std::cout << t << '\n';

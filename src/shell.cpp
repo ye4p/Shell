@@ -21,7 +21,9 @@ void Shell::loop() {
             }
 
             parser.point_to(&tokens);
+            std::cout << "started cleaning up\n";
             parser.cleanup();
+
             ParseStatus ps = parser.parse();
 
 

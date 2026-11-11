@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 #include <tuple>
+#include "node.h"
 
 enum class ParseStatus {
     Inactive,
@@ -25,6 +26,8 @@ enum class TokenType {
     ProcessSubstitutionBegin = 7, // Several things will have beginning like this, but the end will be just generic parenthese
     BackParentheses = 8,
     LogicalOperator = 9,
+    CommandSeparator = 10,
+    BackgroundOperator = 11,
 };
 
 // Contains basic information about token.
@@ -34,10 +37,7 @@ struct Token {
     Token(std::string content, TokenType tt) : content(content), tt(tt) {}
 };
 
-std::ostream& operator<<(std::ostream& out, const Token& t) {
-        out << "Token: <" << t.content << "> of type: " << static_cast<int>(t.tt) << '\n';
-        return out;
-}
+std::ostream& operator<<(std::ostream& out, const Token& t);
 
 // Converts plain string into the list of tokens.
 class Lexer {
@@ -75,7 +75,7 @@ class Parser {
 public:
     Parser(std::vector<std::string>& args);
     void point_to(const std::vector<Token>* tokens);
+    // Ex: cat < input.txt | grep "hello world" > output.txt && echo success
     ParseStatus parse();
     void cleanup(); // Gets rid of extra stuff in the tokens vector
-
 };
