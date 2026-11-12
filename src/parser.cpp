@@ -1,15 +1,11 @@
 #include "../include/parser.hpp"
 
-std::ostream& operator<<(std::ostream& out, const Token& t) {
-        out << "Token: <" << t.content << "> of type: " << static_cast<int>(t.tt);
-        return out;
-}
 
 //
 //  Lexer function definitions
 //
 
-Lexer::Lexer() : line_(nullptr), tt_(TokenType::Uninitialized), i(0) {
+Lexer::Lexer() : line_(nullptr), quote_active_(false), quote_type_(' '), tt_(TokenType::Uninitialized), i(0) {
     
 }
 
@@ -17,10 +13,12 @@ void Lexer::point_to(const std::string* line) {
     line_ = line;
 }
 
-std::vector<Token> Lexer::tokenize() {
+std::tuple<ParseStatus, std::vector<Token>> Lexer::tokenize() {
     while (i < size()) {
         if (quote_active_ && curr() != quote_type_) {
             tok_str_ += curr();
+            advance();
+            continue;
         }
         switch (curr()) {
             case '|':
@@ -49,8 +47,8 @@ std::vector<Token> Lexer::tokenize() {
                     tt_ = TokenType::String;
                     tok_str_.clear();
                 } else if (quote_active_ && curr() == quote_type_) {
-                    quote_active = false;
-                    quote_type = ' ';
+                    quote_active_ = false;
+                    quote_type_ = ' ';
                     push_token();
                 }
                 break;
@@ -71,34 +69,40 @@ std::vector<Token> Lexer::tokenize() {
                 break;
             case '>':
                 push_token_if_nonempty();
-                tt_ = TokenType::OutputRedirection;
-
-                if (!is_oob(i - 1) && std::isdigit(prev()) && prev() == tokens_.back().content.front()) {
-                    tok_str_ += prev();
-                    tokens_.pop_back();
-                }
-
-                tok_str_ += curr();
-
-                if (!is_oob(i + 1) && next() == '>') {  // LEGAL: smth > smth, smth >> smth, 
-                                                        // smth >& smth, smth >>& smth
-                                                        // and any combinations with numbers on both sides.
+                if (next() == '(') {
+                    tt_ = TokenType::ProcessSubstitutionBegin;
+                    tok_str_ += curr();
                     tok_str_ += next();
                     advance();
+                } else {
+                    tt_ = TokenType::OutputRedirection;
+
+                    if (!is_oob(i - 1) && std::isdigit(prev()) && prev() == tokens_.back().content.front()) {
+                        tok_str_ += prev();
+                        tokens_.pop_back();
+                    }
+
+                    tok_str_ += curr();
+
+                    if (!is_oob(i + 1) && next() == '>') {  // LEGAL: smth > smth, smth >> smth, 
+                                                            // smth >& smth, smth >>& smth
+                                                            // and any combinations with numbers on both sides.
+                        tok_str_ += next();
+                        advance();
+                    }
+
+                    if (!is_oob(i + 1) && next() == '&') {
+                        tok_str_ += next();
+                        advance();
+                    }
+
+                    if (!is_oob(i + 1) && std::isdigit(next())) {
+                        tok_str_ += next();
+                        advance();
+                    }
+
+                    push_token();
                 }
-
-                if (!is_oob(i + 1) && next() == '&') {
-                    tok_str_ += next();
-                    advance();
-                }
-
-                if (!is_oob(i + 1) && std::isdigit(next())) {
-                    tok_str_ += next();
-                    advance();
-                }
-
-                push_token();
-
                 break;
             case ')':
                 push_token_if_nonempty();
@@ -120,7 +124,7 @@ std::vector<Token> Lexer::tokenize() {
                 push_token();
                 break;
             case '&':
-                push_toke_if_nonempt();
+                push_token_if_nonempty();
                 tt_ = TokenType::BackgroundOperator;
                 tok_str_ += curr();
                 push_token();
@@ -137,7 +141,7 @@ std::vector<Token> Lexer::tokenize() {
     if (!tok_str_.empty()) {
         push_token();
     }
-    return tokens_;
+    return {quote_active_ ? ParseStatus::KeepParsing : ParseStatus::Success, tokens_};
 }
 
 char Lexer::prev() {
@@ -187,38 +191,23 @@ bool Lexer::push_token_if_nonempty() { // Returns true/false if non empty token 
 //  Parser function definitions
 //
 
-Parser::Parser(std::vector<std::string>& args) : tokens_ptr_(nullptr), args_(args) {}
+Parser::Parser(std::vector<std::string>& args) : tokens_ptr_(nullptr), args_(args), position_(0) {}
 
 void Parser::point_to(const std::vector<Token>* tokens_ptr) {
     tokens_ptr_ = tokens_ptr;
 }
 
-ParseStatus Parser::parse() {
-    return ParseStatus::Fail;
+CommandSeparator Parser::parse() {
+    return parse_command_separator();
 }
 
 void Parser::cleanup() {
-    bool quote_active = false;
-    TokenType quote_type = TokenType::Uninitialized;
 
     for (size_t i = 0; i < tokens_ptr_->size(); ++i) {
         const Token& t = (*tokens_ptr_)[i];
 
-        if (t.tt != TokenType::Whitespace || quote_active) {
+        if (t.tt != TokenType::Whitespace) {
             tokens_.push_back(t);
-        }
-
-        // Needed to understand if space is needed.
-        if (t.tt == TokenType::SingleQuote || t.tt == TokenType::DoubleQuote) {
-            if (quote_active) {
-                if (t.tt == quote_type) {
-                    quote_active = false;
-                    quote_type = TokenType::Uninitialized;
-                }
-            } else {
-                quote_active = true;
-                quote_type = t.tt;
-            }
         }
     }
 
@@ -233,7 +222,7 @@ CommandSeparator Parser::parse_command_separator() {
         parse_logical_expression()
     };
 
-    while (!is_oob() && curr().type != TokenType::CommandSeparator) {
+    while (!is_oob() && curr().tt != TokenType::CommandSeparator) {
         vec.emplace_back(
             parse_logical_expression()
         );
@@ -249,10 +238,10 @@ LogicalExpression Parser::parse_logical_expression() {
 
     std::vector<LogicalOperator> ops;
 
-    while (!is_oob() && curr().type != TokenType::LogicalOperator) {
+    while (!is_oob() && curr().tt != TokenType::LogicalOperator) {
         ops.emplace_back(curr().content == "&&" ? LogicalOperator::And : LogicalOperator::Or);
         vec.emplace_back(
-            parse_pipeline();
+            parse_pipeline()
         );
     }
 
@@ -264,12 +253,12 @@ LogicalExpression Parser::parse_logical_expression() {
 
 Pipeline Parser::parse_pipeline() {
     std::vector<Command> vec = {
-        parse_command();
+        parse_command()
     };
 
     std::vector<PipelineType> ops;
 
-    while (!is_oob() && curr().type == TokenType::Pipeline) {
+    while (!is_oob() && curr().tt == TokenType::Pipeline) {
         ops.push_back(PipelineType::Standard); // Combined not yet implemented
         vec.push_back(parse_command());
     }
@@ -287,16 +276,16 @@ Command Parser::parse_command() {
 
     std::vector<Redirection> redirections;
 
-    while (!is_oob() && (curr().type == TokenType::InputRedirection || curr().type == TokenType::OutputRedirection)) {
-        redirections.push_back(curr().type == TokenInputRedirection ? Redirection::Input : Redirection::Output);
+    while (!is_oob() && (curr().tt == TokenType::InputRedirection || curr().tt == TokenType::OutputRedirection)) {
+        redirections.push_back(curr().tt == TokenType::InputRedirection ? Redirection::Input : Redirection::Output);
         vec.emplace_back(
             parse_word()
         );
     }
 
-    while (!is_oob() && curr().type == TokenType::String) {
+    while (!is_oob() && curr().tt == TokenType::String) {
         vec.emplace_back(
-            parse_word();
+            parse_word()
         );
     }
 
@@ -325,5 +314,5 @@ const Token& Parser::curr() {
 }
 
 bool Parser::is_oob() {
-    return position >= tokens_.size();
+    return position_ >= tokens_.size();
 }

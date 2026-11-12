@@ -1,4 +1,4 @@
-#include "../include/shell.h"
+#include "../include/shell.hpp"
 
 int main() {
     Shell tny;

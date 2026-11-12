@@ -1,5 +1,6 @@
 #include "../include/shell.hpp"
 #include "../include/parser.hpp"
+#include "../include/node.hpp"
 
 void Shell::loop() {
     int status;
@@ -14,21 +15,23 @@ void Shell::loop() {
             std::getline(std::cin, line);
 
             lexer.point_to(&line);
-            std::vector<Token> tokens = lexer.tokenize();
+            auto [ps, tokens] = lexer.tokenize();
 
             for (const Token& t : tokens) {
                 std::cout<< "Token: <" << t.content << "> of type " << static_cast<int>(t.tt) << '\n';
             }
 
             parser.point_to(&tokens);
-            std::cout << "started cleaning up\n";
             parser.cleanup();
 
-            ParseStatus ps = parser.parse();
+            if (ps == ParseStatus::KeepParsing)
+                continue;
 
+            CommandSeparator cs = parser.parse();
+            std::cout << cs;
 
-            if (ps != ParseStatus::KeepParsing) break;
-
+            if (ps != ParseStatus::KeepParsing)
+                break;
         } while (true);
 
         for (const std::string& s : args_)

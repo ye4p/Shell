@@ -4,7 +4,7 @@
 #include <string>
 #include <vector>
 #include <tuple>
-#include "node.h"
+#include "node.hpp"
 
 enum class ParseStatus {
     Inactive,
@@ -37,7 +37,12 @@ struct Token {
     Token(std::string content, TokenType tt) : content(content), tt(tt) {}
 };
 
-std::ostream& operator<<(std::ostream& out, const Token& t);
+// std::ostream& operator<<(std::ostream& out, const Token& t);
+
+inline std::ostream& operator<<(std::ostream& out, const Token& t) {
+        out << "Token: <" << t.content << "> of type: " << static_cast<int>(t.tt);
+        return out;
+}
 
 // Converts plain string into the list of tokens.
 class Lexer {
@@ -54,7 +59,7 @@ class Lexer {
 public:
     Lexer();
     void point_to(const std::string* line);
-    std::vector<Token> tokenize();
+    std::tuple<ParseStatus, std::vector<Token>> tokenize();
     char prev();
     char curr();
     char next();
@@ -80,11 +85,11 @@ public:
     Parser(std::vector<std::string>& args);
     void point_to(const std::vector<Token>* tokens);
     // Ex: cat < input.txt | grep "hello world" > output.txt && echo success
-    ParseStatus parse();
+    CommandSeparator parse();
     void cleanup(); // Gets rid of extra stuff in the tokens vector
     
     CommandSeparator parse_command_separator();
-    LogicalExpressions parse_logical_expression();
+    LogicalExpression parse_logical_expression();
     Pipeline parse_pipeline();
     Command parse_command();
     Redirection parse_redirection();

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <iostream>
 #include <vector>
 #include <string>
 
@@ -44,4 +45,11 @@ struct LogicalExpression {
 struct CommandSeparator {   // Separated by ; or & (in the future)
     std::vector<LogicalExpression> vec;
 };
+
+
+std::ostream& operator<<(std::ostream& out, const CommandSeparator& cs);
+std::ostream& operator<<(std::ostream& out, const LogicalExpression& le);
+std::ostream& operator<<(std::ostream& out, const Pipeline& p);
+std::ostream& operator<<(std::ostream& out, const Command& c);
+std::ostream& operator<<(std::ostream& out, const Word& w);
 
