@@ -3,19 +3,15 @@
 #include <vector>
 #include <string>
 
-enum class RedirectionType {
-    Input,
-    Output,
-};
 
 struct Word {
     std::string word;
 };
 
-struct Redirection {
-    RedirectionType rt;
-    Word arg;
-}
+enum class Redirection {
+    Input,
+    Output,
+};
 
 struct Command {
     std::vector<Word> args;
@@ -34,7 +30,7 @@ struct Pipeline {
 };
 
 enum class LogicalOperator {
-    Error,
+    Error = -1,
     Null,
     And, 
     Or,

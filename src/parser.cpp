@@ -19,6 +19,9 @@ void Lexer::point_to(const std::string* line) {
 
 std::vector<Token> Lexer::tokenize() {
     while (i < size()) {
+        if (quote_active_ && curr() != quote_type_) {
+            tok_str_ += curr();
+        }
         switch (curr()) {
             case '|':
                 if (!is_oob(i + 1) && next() != '|') {
@@ -39,14 +42,17 @@ std::vector<Token> Lexer::tokenize() {
                 break;
             case '\'':
             case '\"':
-                push_token_if_nonempty();
-                tok_str_ += curr();
-                if (curr() == '\'')
-                    tt_ = TokenType::SingleQuote;
-                else 
-                    tt_ = TokenType::DoubleQuote;
-                push_token();
-
+                if (!quote_active_) {
+                    push_token_if_nonempty();
+                    quote_active_ = true;
+                    quote_type_ = curr();
+                    tt_ = TokenType::String;
+                    tok_str_.clear();
+                } else if (quote_active_ && curr() == quote_type_) {
+                    quote_active = false;
+                    quote_type = ' ';
+                    push_token();
+                }
                 break;
             case '<': // Can be either input redirection < or process substitution <()
                 push_token_if_nonempty();
@@ -237,35 +243,87 @@ CommandSeparator Parser::parse_command_separator() {
 }
 
 LogicalExpression Parser::parse_logical_expression() {
-    LogicalExpression left = LogicalExpression{
-        parse_pipelines(),
-        parse_logical_operator();
-}
+    std::vector<Pipeline> vec = {
+        parse_pipeline()
+    };
 
-LogicalOperator Parser::parse_logical_operator() {
-    if (curr().type == TokenType::LogicalOperator) {
-        if (curr().content == "&&") {
-            return LogicalOperator::And;
-        } else {
-            return LogicalOperator::Or;
-        }
-    } else {
-        return LogicalOperator::Error;
+    std::vector<LogicalOperator> ops;
+
+    while (!is_oob() && curr().type != TokenType::LogicalOperator) {
+        ops.emplace_back(curr().content == "&&" ? LogicalOperator::And : LogicalOperator::Or);
+        vec.emplace_back(
+            parse_pipeline();
+        );
     }
+
+    return LogicalExpression {
+        .pipelines = vec,
+        .ops = ops,
+    };
 }
 
-std::vector<Pipeline> Parser::parse_pipelines() {
+Pipeline Parser::parse_pipeline() {
+    std::vector<Command> vec = {
+        parse_command();
+    };
 
+    std::vector<PipelineType> ops;
+
+    while (!is_oob() && curr().type == TokenType::Pipeline) {
+        ops.push_back(PipelineType::Standard); // Combined not yet implemented
+        vec.push_back(parse_command());
+    }
+
+    return Pipeline {
+        .commands = vec,
+        .ops = ops,
+    };
 }
 
-std::vector<Command> Parser::parse_commands() {
-    
+Command Parser::parse_command() {
+    std::vector<Word> vec = {
+        parse_word()
+    };
+
+    std::vector<Redirection> redirections;
+
+    while (!is_oob() && (curr().type == TokenType::InputRedirection || curr().type == TokenType::OutputRedirection)) {
+        redirections.push_back(curr().type == TokenInputRedirection ? Redirection::Input : Redirection::Output);
+        vec.emplace_back(
+            parse_word()
+        );
+    }
+
+    while (!is_oob() && curr().type == TokenType::String) {
+        vec.emplace_back(
+            parse_word();
+        );
+    }
+
+    return Command {
+        .args = vec,
+        .redirections = redirections,
+    };
 }
 
-std::vector<Redirection> Parser::parse_redirections() {
+Word Parser::parse_word() {
+    const Token& t = curr();
+    advance();
 
+    // In theory it should only add TokenType::String
+    return Word {
+        t.content
+    };
 }
 
-std::vector<Word> Parser::parse_words() {
-    std::vector<Word> words;
+void Parser::advance() {
+    ++position_;
+}
+
+const Token& Parser::curr() {
+    return tokens_[position_];
+}
+
+bool Parser::is_oob() {
+    return position >= tokens_.size();
 }

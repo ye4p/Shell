@@ -18,8 +18,8 @@ enum class TokenType {
 
     Whitespace = 0,
     String = 1,
-    SingleQuote = 2,
-    DoubleQuote = 3,
+    // SingleQuote = 2,
+    // DoubleQuote = 3,
     Pipeline = 4,       // |
     InputRedirection = 5,
     OutputRedirection = 6,    // > and other kinds
@@ -73,7 +73,7 @@ class Parser {
     std::vector<std::string>& args_;
 
     // Variables used in parsing:
-    size_t position;
+    size_t position_;
 
 
 public:
@@ -83,15 +83,16 @@ public:
     ParseStatus parse();
     void cleanup(); // Gets rid of extra stuff in the tokens vector
     
-    std::vector<CommandSeparator> parse_command_separators();
-    std::vector<LogicalExpressions> parse_logical_expressions();
-    std::vector<Pipeline> parse_pipelines();
-    std::vector<Command> parse_commands();
-    std::vector<Redirection> parse_redirections();
-    std::vector<Word> parse_words();
+    CommandSeparator parse_command_separator();
+    LogicalExpressions parse_logical_expression();
+    Pipeline parse_pipeline();
+    Command parse_command();
+    Redirection parse_redirection();
+    Word parse_word();
 
 
     // Helper methods:
     void advance();
     const Token& curr();
+    bool is_oob();
 };
