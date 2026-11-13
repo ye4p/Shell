@@ -125,8 +125,16 @@ std::tuple<ParseStatus, std::vector<Token>> Lexer::tokenize() {
                 break;
             case '&':
                 push_token_if_nonempty();
-                tt_ = TokenType::BackgroundOperator;
-                tok_str_ += curr();
+                // Can either be background operator or logical and
+                if (!is_oob(i + 1) && next() == '&') {
+                    tt_ = TokenType::LogicalOperator;
+                    tok_str_ += curr();
+                    tok_str_ += next();
+                    advance();
+                } else {
+                    tt_ = TokenType::BackgroundOperator;
+                    tok_str_ += curr();
+                }
                 push_token();
                 break;
             default:
@@ -222,7 +230,8 @@ CommandSeparator Parser::parse_command_separator() {
         parse_logical_expression()
     };
 
-    while (!is_oob() && curr().tt != TokenType::CommandSeparator) {
+    while (!is_oob() && curr().tt == TokenType::CommandSeparator) {
+        advance();
         vec.emplace_back(
             parse_logical_expression()
         );
@@ -238,8 +247,9 @@ LogicalExpression Parser::parse_logical_expression() {
 
     std::vector<LogicalOperator> ops;
 
-    while (!is_oob() && curr().tt != TokenType::LogicalOperator) {
+    while (!is_oob() && curr().tt == TokenType::LogicalOperator) {
         ops.emplace_back(curr().content == "&&" ? LogicalOperator::And : LogicalOperator::Or);
+        advance();
         vec.emplace_back(
             parse_pipeline()
         );
@@ -260,6 +270,7 @@ Pipeline Parser::parse_pipeline() {
 
     while (!is_oob() && curr().tt == TokenType::Pipeline) {
         ops.push_back(PipelineType::Standard); // Combined not yet implemented
+        advance();
         vec.push_back(parse_command());
     }
 
@@ -276,11 +287,21 @@ Command Parser::parse_command() {
 
     std::vector<Redirection> redirections;
 
-    while (!is_oob() && (curr().tt == TokenType::InputRedirection || curr().tt == TokenType::OutputRedirection)) {
-        redirections.push_back(curr().tt == TokenType::InputRedirection ? Redirection::Input : Redirection::Output);
-        vec.emplace_back(
-            parse_word()
-        );
+    while (!is_oob() && (curr().tt == TokenType::InputRedirection || curr().tt == TokenType::OutputRedirection || curr().tt == TokenType::String)) {
+        if (curr().tt == TokenType::String) {
+            vec.emplace_back(
+                parse_word()
+            );
+        } else {
+            RedirectionType r = curr().tt == TokenType::InputRedirection ? RedirectionType::Input : RedirectionType::Output;
+            advance();
+            redirections.emplace_back(
+                Redirection {
+                    r,
+                    parse_word(),
+                }
+            );
+        }
     }
 
     while (!is_oob() && curr().tt == TokenType::String) {

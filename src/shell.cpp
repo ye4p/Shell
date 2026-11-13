@@ -1,6 +1,4 @@
 #include "../include/shell.hpp"
-#include "../include/parser.hpp"
-#include "../include/node.hpp"
 
 void Shell::loop() {
     int status;
@@ -24,20 +22,14 @@ void Shell::loop() {
             parser.point_to(&tokens);
             parser.cleanup();
 
-            if (ps == ParseStatus::KeepParsing)
-                continue;
-
-            CommandSeparator cs = parser.parse();
-            std::cout << cs;
-
-            if (ps != ParseStatus::KeepParsing)
+            if (ps =! ParseStatus::KeepParsing)
                 break;
         } while (true);
 
-        for (const std::string& s : args_)
-            std::cout << ">>" << s << "<<\n";
+        cs = parser.parse();
+        std::cout << cs;
 
-        status = execute();
+        status = executeAllCommands();
     } while (status);
 }
 
@@ -80,6 +72,49 @@ int Shell::execute() {
     }
 
     return launch();
+}
+
+int Shell::execute_all_commands() {
+    int status;
+
+    for (size_t i = 0; i < cs.vec.size(); ++i) {
+        status = execute_logical_expression(&cs.vec[i]);
+    }
+
+    return status;
+}
+
+int Shell:execute_logical_expression(const LogicalExpression& le) {
+    if (le.ops.size() + 1 != le.pipelines.size()) {
+        throw std::runtime_error("Number of expressions and logical operators doesn't match\n");
+    }
+
+    if (le.ops.empty()) {
+        return execute_pipeline(&le.pipelines[0]);
+    }
+
+    size_t i = 0;
+    int status;
+    while (i < le.pipelines.size()) {
+        status = execute_pipeline(&le.pipelines[i]);
+        if (status) { // That short circuits all logical OR
+            while (i < le.ops.size() && le.ops[i] == LogicalOperator::Or) {
+                ++i;
+            }
+            ++i;
+        } else {
+            while (i < le.ops.size() && le.ops[i] == LogicalOperator::And) {
+                ++i;
+            }
+            ++i;
+        }
+    }
+
+    return status;
+}
+
+int Shell::execute_pipeline(const Pipeline& p) {
+    
 }
 
 size_t Shell::num_builtins() {

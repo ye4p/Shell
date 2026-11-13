@@ -9,9 +9,14 @@ struct Word {
     std::string word;
 };
 
-enum class Redirection {
+enum class RedirectionType {
     Input,
     Output,
+};
+
+struct Redirection {
+    RedirectionType type;
+    Word word;
 };
 
 struct Command {
@@ -51,5 +56,6 @@ std::ostream& operator<<(std::ostream& out, const CommandSeparator& cs);
 std::ostream& operator<<(std::ostream& out, const LogicalExpression& le);
 std::ostream& operator<<(std::ostream& out, const Pipeline& p);
 std::ostream& operator<<(std::ostream& out, const Command& c);
+std::ostream& operator<<(std::ostream& out, const Redirection& r);
 std::ostream& operator<<(std::ostream& out, const Word& w);
 

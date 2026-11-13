@@ -43,15 +43,20 @@ std::ostream& operator<<(std::ostream& out, const Command& c) {
     out << "Command with following redirections: \n";
 
     for (size_t i = 0; i < c.redirections.size(); ++i) {
-        out << (c.redirections[i] == Redirection::Input ? "Input" : "Output");
+        out << c.redirections[i];
     }
 
     out << "And command has following arguments \n";
     for (size_t i = 0; i < c.args.size(); ++i) {
-        out << c.args[i];
+        out << c.args[i] << ", ";
     }
 
     out << '\n';
+    return out;
+}
+
+std::ostream& operator<<(std::ostream& out, const Redirection& r) {
+    out << (r.type == RedirectionType::Input ? "Input" : "Output") << " redirection of " << r.word << '\n';
     return out;
 }
 

@@ -9,11 +9,18 @@
 #include <array>
 #include <filesystem>
 #include <algorithm>
+#include <stdexcept>
+
+#include "parser.hpp"
+#include "node.hpp"
 
 
 class Shell {
 private:
-    std::vector<std::string> args_;
+    // With new parser, we might not need to store args here as each command already stores its own arguments
+    // std::vector<std::string> args_;
+
+    CommandSeparator cs;
 
     std::vector<std::string> builtin_str_ = {
         "cd",
@@ -33,13 +40,15 @@ private:
         &Shell::pwd,
         &Shell::type,
     };
-    
+
 public:
     void loop();
     std::string read_line() const;
     void split_line(std::string& line);
-    int launch();
-    int execute();
+    // int launch();
+    // int execute();
+    int executeAllCommands();
+
 
     size_t num_builtins();
     int call_builtin(size_t i);
