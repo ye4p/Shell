@@ -46,12 +46,25 @@ std::ostream& operator<<(std::ostream& out, const Command& c) {
         out << c.redirections[i];
     }
 
-    out << "And command has following arguments \n";
+    out << "+ with the following arguments: \n";
     for (size_t i = 0; i < c.args.size(); ++i) {
         out << c.args[i] << ", ";
     }
 
+    out << "+ with the following process substitutions: \n";
+    out << c.ps;
+
     out << '\n';
+    return out;
+}
+
+std::ostream& operator<<(std::ostream& out, const ProcessSubstitution& ps) {
+    out << "Process substitution of type " << (ps.st == SubstitutionType::Input ? "INPUT" : "OUTPUT") << " with the following arguments: \n";
+
+    for (size_t i = 0; i < ps.args.size(); ++i) {
+        out << ps.args[i] << ", ";
+    }
+
     return out;
 }
 

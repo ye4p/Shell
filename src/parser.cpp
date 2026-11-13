@@ -286,13 +286,19 @@ Command Parser::parse_command() {
     };
 
     std::vector<Redirection> redirections;
+    std::vector<ProcessSubstitution> substitutions;
 
-    while (!is_oob() && (curr().tt == TokenType::InputRedirection || curr().tt == TokenType::OutputRedirection || curr().tt == TokenType::String)) {
+    while (!is_oob() && (
+                curr().tt == TokenType::InputRedirection || 
+                curr().tt == TokenType::OutputRedirection || 
+                curr().tt == TokenType::String ||
+                curr().tt == TokenType::ProcessSubstitutionBegin
+                )) {
         if (curr().tt == TokenType::String) {
             vec.emplace_back(
                 parse_word()
             );
-        } else {
+        } else if (curr().tt == TokenType::InputRedirection || TokenType::OutputRedirection) {
             RedirectionType r = curr().tt == TokenType::InputRedirection ? RedirectionType::Input : RedirectionType::Output;
             advance();
             redirections.emplace_back(
@@ -300,6 +306,10 @@ Command Parser::parse_command() {
                     r,
                     parse_word(),
                 }
+            );
+        } else { // Process substitution case.
+            substitutions.emplace_back(
+                parse_process_substitution()
             );
         }
     }
@@ -313,6 +323,25 @@ Command Parser::parse_command() {
     return Command {
         .args = vec,
         .redirections = redirections,
+    };
+}
+
+ProcessSubstitution Parser::parse_process_substitution() {
+    SubstitutionType t = curr().content == "<(" ? SubstitutionType::Input : SubstitutionType::Output;
+    std::vector<Word> args;
+
+    // Requires that there is closing parentheses for the process substitution
+    while (curr().tt != TokenType::BackParentheses) {
+        args.emplace_back(
+            parse_word();
+        );
+    }
+
+    advance();
+
+    return ProcessSubstitution {
+        .st = t,
+        .args = args,
     };
 }
 

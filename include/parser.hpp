@@ -92,6 +92,7 @@ public:
     LogicalExpression parse_logical_expression();
     Pipeline parse_pipeline();
     Command parse_command();
+    ProcessSubstitution parse_process_substitution();
     Redirection parse_redirection();
     Word parse_word();
 

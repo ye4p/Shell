@@ -30,7 +30,7 @@ private:
         "type",
     };
 
-    using func = int (Shell::*)();
+    using func = int (Shell::*)(const std::vector<std::string&> args);
 
     // int (*builtin_func[])() = {
     std::array<func, 5> builtin_func_ {
@@ -51,12 +51,12 @@ public:
 
 
     size_t num_builtins();
-    int call_builtin(size_t i);
+    int call_builtin(const std::vector<std::string>& args, size_t i);
 
     // Builtin commands:
-    int cd();
-    int help();
-    int exit();
-    int pwd();
-    int type();
+    int cd(const std::vector<std::string>& args);
+    int help(const std::vector<std::string>& args);
+    int exit(const std::vector<std::string>& args);
+    int pwd(const std::vector<std::string>& args);
+    int type(const std::vector<std::string>& args);
 };

@@ -33,7 +33,7 @@ void Shell::loop() {
     } while (status);
 }
 
-int Shell::launch() {
+int Shell::launch(const std::vector<std::string>& args) {
     pid_t pid; // Removed wpid cause its unnecessary at the moment
     int status;
     pid = fork();
@@ -42,7 +42,7 @@ int Shell::launch() {
         // Child process:
         // Construct a vector of char*:
         std::vector<char*> temp;
-        for (auto& arg : args_) {
+        for (auto& arg : args) {
             temp.push_back(arg.data());
         }
         if (execvp(temp[0], temp.data()) == -1)
@@ -61,17 +61,17 @@ int Shell::launch() {
     return 1;
 }
 
-int Shell::execute() {
-    if (args_.empty())
+int Shell::execute(const std::vector<std::string>& args) {
+    if (args.empty())
         return 1; // Since no command was entered.
 
     for (size_t i = 0; i < num_builtins(); ++i) {
-        if (args_[0] == builtin_str_[i]) {
-            return call_builtin(i);
+        if (args[0] == builtin_str_[i]) {
+            return call_builtin(args, i);
         }
     }
 
-    return launch();
+    return launch(args);
 }
 
 int Shell::execute_all_commands() {
@@ -114,26 +114,59 @@ int Shell:execute_logical_expression(const LogicalExpression& le) {
 }
 
 int Shell::execute_pipeline(const Pipeline& p) {
+    // For now ignore pipeline type
     
+}
+
+int Shell:execute_command(const Command& c) {
+    std::string n;
+    // Handle redirections
+    
+    // Handle process substitution.
+    
+    // Input process substitution needs to execute first. 
+    // We need to get stdandard output of that command and 
+    // direct it into standard input of main command
+    for (size_t i = 0; i < c.ps.size(); ++i) {
+        if (c.ps[i].st == SubstitutionType::Input) {
+            in = execute_and_read(c.ps[i].) // need to define function for conversion
+            break;
+        }
+    }
+    std::string in = execute_and_read(
+}
+
+std::string Shell::execute_and_read(const std::vector<std::string>& args, int file_descriptor) {
+    
+}
+
+std::vector<const char*> Shell::get_args(const std::vector<std::string>& args) {
+    std::vector<const char*> temp;
+    for (const auto& s : args) {
+        temp.push_back(s.data());
+    }
+    temp.push_back(nullptr);
+
+    return temp;
 }
 
 size_t Shell::num_builtins() {
     return builtin_func_.size();
 }
 
-int Shell::call_builtin(size_t i) {
-    return (this->*builtin_func_[i])();
+int Shell::call_builtin(const std::vector<std::string>& args, size_t i) {
+    return (this->*builtin_func_[i])(args);
 }
 
 //
 // Builtin functions definitions
 //
 
-int Shell::cd() {
-    if (args_.size() <= 1) {
+int Shell::cd(const std::vector<std::string>& args) {
+    if (args.size() <= 1) {
         std::cerr << "tny: expected argument to \"cd\"\n";
     } else {
-        if (chdir(args_.at(1).c_str()) != 0) {
+        if (chdir(args.at(1).c_str()) != 0) {
             perror("tny");
         }
     }
@@ -141,7 +174,7 @@ int Shell::cd() {
     return 1;
 }
 
-int Shell::help() {
+int Shell::help(const std::vector<std::string>& args) {
     std::cout << "DG's tny shell\n";
     std::cout << "Type command with its arguments and click enter\n";
     std::cout << "Built in programs:\n";
@@ -153,19 +186,19 @@ int Shell::help() {
     return 1;
 }
 
-int Shell::exit() {
+int Shell::exit(const std::vector<std::string>& args) {
     return 0;
 }
 
-int Shell::pwd() {
+int Shell::pwd(const std::vector<std::string>& args) {
     std::cout << std::filesystem::current_path() << "\n";
     return 1;
 }
 
-int Shell::type() {
-    if (args_.size() <= 1)
+int Shell::type(const std::vector<std::string>& args) {
+    if (args.size() <= 1)
         std::cerr << "tny: expected argument to \"type\"\n";
-    if (std::find(builtin_str_.begin(), builtin_str_.end(), args_[1]) != builtin_str_.end()) 
+    if (std::find(builtin_str_.begin(), builtin_str_.end(), args[1]) != builtin_str_.end()) 
         std::cout << "Shell builtin\n";
     else
         std::cout << "Not a shell builtin\n";

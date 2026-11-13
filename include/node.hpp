@@ -19,9 +19,20 @@ struct Redirection {
     Word word;
 };
 
+enum class SubstitutionType {
+    Input,
+    Output,
+};
+
+struct ProcessSubstitution {
+    SubstitutionType st;
+    std::vector<Word> args;
+};
+
 struct Command {
     std::vector<Word> args;
     std::vector<Redirection> redirections;
+    std::vector<ProcessSubstitution> ps;
     // Also need to add assignment support
 };
 
@@ -56,6 +67,7 @@ std::ostream& operator<<(std::ostream& out, const CommandSeparator& cs);
 std::ostream& operator<<(std::ostream& out, const LogicalExpression& le);
 std::ostream& operator<<(std::ostream& out, const Pipeline& p);
 std::ostream& operator<<(std::ostream& out, const Command& c);
+std::ostream& operator<<(std::ostream& out, const ProcessSubstitution& ps);
 std::ostream& operator<<(std::ostream& out, const Redirection& r);
 std::ostream& operator<<(std::ostream& out, const Word& w);
 
