@@ -14,6 +14,12 @@
 #include "parser.hpp"
 #include "node.hpp"
 
+enum class FileDescriptor {
+    StandardInput = 0,
+    StandardOutput = 1,
+    StandardError = 2,
+    Combined = 3,
+};
 
 class Shell {
 private:
@@ -30,7 +36,7 @@ private:
         "type",
     };
 
-    using func = int (Shell::*)(const std::vector<std::string&> args);
+    using func = std::tuple<int, std::string> (Shell::*)(const std::vector<std::string&> args, FileDescriptor fd);
 
     // int (*builtin_func[])() = {
     std::array<func, 5> builtin_func_ {
@@ -45,18 +51,22 @@ public:
     void loop();
     std::string read_line() const;
     void split_line(std::string& line);
-    // int launch();
-    // int execute();
-    int executeAllCommands();
 
+    std::tuple<int, std::string> launch(const std::vector<std::string>& args, FileDescriptor fd);
+    std::tuple<int, std::string> execute(const std::vector<std::string>& args, FileDescriptor fd);
+
+    int execute_all_commands();
+    int execute_logical_expression(const LogicalExpression& le);
+    int execute_pipeline(const Pipeline& p);
+    std::tuple<int, std::string> execute_command(const Command& c);
 
     size_t num_builtins();
-    int call_builtin(const std::vector<std::string>& args, size_t i);
+    std::tuple<int, std::string> call_builtin(const std::vector<std::string>& args, size_t i, FileDescriptor fd);
 
     // Builtin commands:
-    int cd(const std::vector<std::string>& args);
-    int help(const std::vector<std::string>& args);
-    int exit(const std::vector<std::string>& args);
-    int pwd(const std::vector<std::string>& args);
-    int type(const std::vector<std::string>& args);
+    std::tuple<int, std::string> cd(const std::vector<std::string>& args, FileDescriptor fd);
+    std::tuple<int, std::string> help(const std::vector<std::string>& args, FileDescriptor fd);
+    std::tuple<int, std::string> exit(const std::vector<std::string>& args, FileDescriptor fd);
+    std::tuple<int, std::string> pwd(const std::vector<std::string>& args, FileDescriptor fd);
+    std::tuple<int, std::string> type(const std::vector<std::string>& args, FileDescriptor fd);
 };
